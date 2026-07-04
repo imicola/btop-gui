@@ -1,7 +1,9 @@
 package procfs
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +16,55 @@ const ClkTck = 100
 
 // PageSize 是内存页大小（bytes），/proc/[pid]/stat 的 rss 字段单位是"页"。
 var PageSize = uint64(syscall.Getpagesize())
+
+// ReadSystemInfo 读取 hostname、kernel release 和 /proc/cpuinfo。
+func ReadSystemInfo() SystemInfo {
+	info := SystemInfo{}
+	info.Hostname, _ = os.Hostname()
+	if b, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
+		info.Kernel = strings.TrimSpace(string(b))
+	}
+	if f, err := os.Open("/proc/cpuinfo"); err == nil {
+		defer f.Close()
+		model, freq, _ := parseCPUInfo(f)
+		info.CPUModel, info.CPUFreqMHz = model, freq
+	}
+	return info
+}
+
+func parseCPUInfo(r io.Reader) (string, float64, error) {
+	var model string
+	var freq float64
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		parts := strings.SplitN(sc.Text(), ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key, value := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		switch key {
+		case "model name", "Processor", "Hardware":
+			if model == "" {
+				model = value
+			}
+		case "cpu MHz":
+			if freq == 0 {
+				parsed, err := strconv.ParseFloat(value, 64)
+				if err != nil {
+					return "", 0, fmt.Errorf("invalid cpu MHz %q: %w", value, err)
+				}
+				freq = parsed
+			}
+		}
+		if model != "" && freq != 0 {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return "", 0, err
+	}
+	return model, freq, nil
+}
 
 // ReadLoadAvg 读取 /proc/loadavg，返回 1/5/15 分钟平均负载
 //

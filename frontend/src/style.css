@@ -1,57 +1,51 @@
+@font-face {
+  font-family: "Nunito";
+  src: url("./assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+  font-display: swap;
+}
+
 :root {
-  --bg: #0d1117;
-  --bg-elevated: #161b22;
-  --card: #161b22;
-  --card-hover: #1c2128;
-  --border: #30363d;
-  --border-subtle: #21262d;
-  --text: #e6edf3;
-  --text-secondary: #c9d1d9;
-  --muted: #8b949e;
-  --accent: #58a6ff;
-  --green: #3fb950;
-  --yellow: #d29922;
-  --red: #f85149;
-  --purple: #bc8cff;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --bg: #171927;
+  --panel: #202338;
+  --panel-raised: #282b43;
+  --text: #d9e0ee;
+  --text-soft: #c8cfe2;
+  --muted: #9096ad;
+  --line: #3d425f;
+  --track: #343850;
+  --cyan: #7bdff2;
+  --green: #a6e3a1;
+  --violet: #cba6f7;
+  --rose: #f38ba8;
+  --amber: #f9e2af;
+  --mono: "Maple Mono NF CN", "DejaVu Sans Mono", "FreeMono", monospace;
+  color-scheme: dark;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
+* { box-sizing: border-box; }
+html, body, #app { width: 100%; height: 100%; margin: 0; }
 body {
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text-secondary);
-  font-family: "Maple Mono NF CN", "JetBrains Mono", "Fira Code", "SF Mono",
-    "Cascadia Code", Consolas, "Liberation Mono", monospace;
-  font-size: 14px;
-  font-feature-settings: "tnum" 1, "calt" 1;
-  -webkit-font-smoothing: antialiased;
-}
-
-#app {
-  height: 100vh;
+  min-width: 760px;
   overflow: hidden;
+  background: var(--bg);
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  font-feature-settings: "tnum" 1, "calt" 1;
+  font-synthesis: none;
+  -webkit-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
 }
+button, input { font-family: inherit; }
+button:focus-visible, input:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+::selection { background: rgba(203,166,247,.28); color: var(--text); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border-radius: 4px; background: var(--line); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
+@media (max-width: 1050px) {
+  body { min-width: 0; overflow: auto; }
 }

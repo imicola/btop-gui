@@ -1,6 +1,16 @@
 package procfs
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestParseCPUInfo(t *testing.T) {
+	model, freq, err := parseCPUInfo(strings.NewReader("model name : Test CPU\ncpu MHz : 2400.500\n"))
+	if err != nil || model != "Test CPU" || freq != 2400.5 {
+		t.Fatalf("parseCPUInfo() = %q, %v, %v", model, freq, err)
+	}
+}
 
 func TestParseLoadAvg(t *testing.T) {
 	got, err := parseLoadAvg("0.52 0.58 0.59 2/1034 12345\n")

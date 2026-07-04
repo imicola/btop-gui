@@ -16,6 +16,7 @@ func ListProcesses() ([]ProcessInfo, error) {
 		return nil, err
 	}
 	procs := make([]ProcessInfo, 0, 256)
+	users := readPasswdUsers()
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -28,12 +29,42 @@ func ListProcesses() ([]ProcessInfo, error) {
 		if err != nil {
 			continue
 		}
+		if f, statusErr := os.Open(filepath.Join("/proc", e.Name(), "status")); statusErr == nil {
+			status, parseErr := parseProcessStatus(f)
+			_ = f.Close()
+			if parseErr == nil {
+				p.UID = status.uid
+				p.User = users[status.uid]
+				if p.User == "" {
+					p.User = strconv.FormatUint(status.uid, 10)
+				}
+			}
+		}
 		procs = append(procs, p)
 	}
 	if len(procs) == 0 {
 		return nil, fmt.Errorf("no readable process stat entries found")
 	}
 	return procs, nil
+}
+
+func readPasswdUsers() map[uint64]string {
+	result := make(map[uint64]string)
+	b, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return result
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) < 3 {
+			continue
+		}
+		uid, err := strconv.ParseUint(fields[2], 10, 64)
+		if err == nil {
+			result[uid] = fields[0]
+		}
+	}
+	return result
 }
 
 // ReadProcess 读取一个指定 PID 的进程快照。

@@ -40,6 +40,23 @@ func TestGetSnapshotEndToEnd(t *testing.T) {
 		t.Fatalf("inconsistent snapshot metadata: first=%d second=%d procs=%d/%d",
 			first.Timestamp, second.Timestamp, len(second.Procs), second.ProcCount)
 	}
+	if second.System.Hostname == "" || !second.Network.Available || len(second.Network.Interfaces) == 0 {
+		t.Fatalf("missing system/network data: system=%+v network=%+v", second.System, second.Network)
+	}
+}
+
+func TestGetProcessDetailAndForkValidation(t *testing.T) {
+	a := NewApp()
+	p, err := procfs.ReadProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail, err := a.GetProcessDetail(p.PID, p.StartTime); err != nil || detail.PID != p.PID {
+		t.Fatalf("GetProcessDetail() = %+v, %v", detail, err)
+	}
+	if _, err := a.ForkDemo(31); err == nil {
+		t.Fatal("ForkDemo() accepted an excessive duration")
+	}
 }
 
 func TestKillProcessRejectsDangerousTargetsAndSignals(t *testing.T) {

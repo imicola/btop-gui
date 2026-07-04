@@ -25,6 +25,55 @@ type MemoryInfo struct {
 	SwapUsage float64 `json:"swapUsage"`
 }
 
+// SystemInfo 描述主机和内核信息；部分虚拟化环境可能不提供 CPU 频率。
+type SystemInfo struct {
+	Hostname   string  `json:"hostname"`
+	Kernel     string  `json:"kernel"`
+	CPUModel   string  `json:"cpuModel"`
+	CPUFreqMHz float64 `json:"cpuFreqMHz"`
+}
+
+// NetworkInterfaceInfo 是 /proc/net/dev 中一个网络接口的累计量和采样速率。
+type NetworkInterfaceInfo struct {
+	Name    string  `json:"name"`
+	RXBytes uint64  `json:"rxBytes"`
+	TXBytes uint64  `json:"txBytes"`
+	RXRate  float64 `json:"rxRate"`
+	TXRate  float64 `json:"txRate"`
+}
+
+type NetworkInfo struct {
+	Available  bool                   `json:"available"`
+	Error      string                 `json:"error"`
+	Primary    string                 `json:"primary"`
+	Interfaces []NetworkInterfaceInfo `json:"interfaces"`
+}
+
+// DiskDeviceInfo 使用 /proc/diskstats 的 512-byte sector 计数计算吞吐率。
+type DiskDeviceInfo struct {
+	Name        string  `json:"name"`
+	ReadBytes   uint64  `json:"readBytes"`
+	WriteBytes  uint64  `json:"writeBytes"`
+	ReadRate    float64 `json:"readRate"`
+	WriteRate   float64 `json:"writeRate"`
+	BusyPercent float64 `json:"busyPercent"`
+}
+
+type FilesystemInfo struct {
+	MountPoint string  `json:"mountPoint"`
+	Total      uint64  `json:"total"`
+	Used       uint64  `json:"used"`
+	Available  uint64  `json:"available"`
+	Usage      float64 `json:"usage"`
+}
+
+type DiskInfo struct {
+	Available bool             `json:"available"`
+	Error     string           `json:"error"`
+	Root      FilesystemInfo   `json:"root"`
+	Devices   []DiskDeviceInfo `json:"devices"`
+}
+
 // ProcessInfo 单个进程的快照信息（来自 /proc/[pid]/stat）
 type ProcessInfo struct {
 	PID       int     `json:"pid"`
@@ -37,8 +86,30 @@ type ProcessInfo struct {
 	VSize     uint64  `json:"vsize"` // 虚拟内存 bytes
 	Threads   int     `json:"threads"`
 	StartTime uint64  `json:"startTime"` // 自系统启动后的启动 tick；与 PID 共同标识一次进程实例
+	UID       uint64  `json:"uid"`
+	User      string  `json:"user"`
 
 	// UTime/STime 是计算 CPU% 的中间值，不暴露给前端
 	UTime uint64 `json:"-"`
 	STime uint64 `json:"-"`
+}
+
+// ProcessDetail 按需读取，不放入每秒全量进程扫描，避免 O(N) 额外 I/O。
+type ProcessDetail struct {
+	PID                 int      `json:"pid"`
+	StartTime           uint64   `json:"startTime"`
+	User                string   `json:"user"`
+	UID                 uint64   `json:"uid"`
+	Command             string   `json:"command"`
+	Executable          string   `json:"executable"`
+	CWD                 string   `json:"cwd"`
+	Elapsed             float64  `json:"elapsed"`
+	VmPeak              uint64   `json:"vmPeak"`
+	VmSwap              uint64   `json:"vmSwap"`
+	ReadBytes           uint64   `json:"readBytes"`
+	WriteBytes          uint64   `json:"writeBytes"`
+	VoluntarySwitches   uint64   `json:"voluntarySwitches"`
+	InvoluntarySwitches uint64   `json:"involuntarySwitches"`
+	FDCount             int      `json:"fdCount"`
+	Unavailable         []string `json:"unavailable"`
 }

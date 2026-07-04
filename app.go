@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"btop-gui/internal/processctl"
 	"btop-gui/internal/procfs"
 	"golang.org/x/sys/unix"
 )
@@ -19,10 +20,15 @@ type App struct {
 	ctx context.Context
 	mu  sync.Mutex
 
-	prevAllCPU  *procfs.CPUSample
-	prevPerCPU  map[string]procfs.CPUSample
-	prevProcCPU map[int]procCPUSample
-	prevWall    time.Time
+	prevAllCPU   *procfs.CPUSample
+	prevPerCPU   map[string]procfs.CPUSample
+	prevProcCPU  map[int]procCPUSample
+	prevWall     time.Time
+	prevNetwork  map[string]procfs.NetworkSample
+	prevNetWall  time.Time
+	prevDisk     map[string]procfs.DiskSample
+	prevDiskWall time.Time
+	system       procfs.SystemInfo
 }
 
 type procCPUSample struct {
@@ -31,7 +37,7 @@ type procCPUSample struct {
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{system: procfs.ReadSystemInfo()}
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -47,6 +53,16 @@ type SnapshotData struct {
 	Uptime    float64              `json:"uptime"`
 	Procs     []procfs.ProcessInfo `json:"procs"`
 	ProcCount int                  `json:"procCount"`
+	System    procfs.SystemInfo    `json:"system"`
+	Network   procfs.NetworkInfo   `json:"network"`
+	Disk      procfs.DiskInfo      `json:"disk"`
+}
+
+type ForkResult struct {
+	PID             int    `json:"pid"`
+	ParentPID       int    `json:"parentPid"`
+	DurationSeconds int    `json:"durationSeconds"`
+	Implementation  string `json:"implementation"`
 }
 
 // GetSnapshot 采集一次系统快照（CPU/内存/负载/进程列表）
@@ -57,6 +73,7 @@ func (a *App) GetSnapshot() (*SnapshotData, error) {
 
 	wallNow := time.Now()
 	resp := &SnapshotData{Timestamp: wallNow.UnixMilli()}
+	resp.System = a.system
 
 	allCPU, perCPU, err := procfs.ReadCPUSamples()
 	if err != nil {
@@ -96,6 +113,52 @@ func (a *App) GetSnapshot() (*SnapshotData, error) {
 	}
 	resp.Uptime = up
 
+	if samples, netErr := procfs.ReadNetworkSamples(); netErr != nil {
+		resp.Network.Error = netErr.Error()
+	} else {
+		seconds := 0.0
+		if !a.prevNetWall.IsZero() {
+			seconds = wallNow.Sub(a.prevNetWall).Seconds()
+		}
+		resp.Network.Interfaces = procfs.NetworkRates(samples, a.prevNetwork, seconds)
+		resp.Network.Primary = procfs.PrimaryNetworkInterface(resp.Network.Interfaces)
+		resp.Network.Available = true
+		a.prevNetwork = make(map[string]procfs.NetworkSample, len(samples))
+		for _, sample := range samples {
+			a.prevNetwork[sample.Name] = sample
+		}
+		a.prevNetWall = wallNow
+	}
+
+	root, rootErr := procfs.ReadRootFilesystem()
+	diskSamples, diskErr := procfs.ReadDiskSamples()
+	if rootErr == nil {
+		resp.Disk.Root = root
+		resp.Disk.Available = true
+	}
+	if diskErr == nil {
+		seconds := 0.0
+		if !a.prevDiskWall.IsZero() {
+			seconds = wallNow.Sub(a.prevDiskWall).Seconds()
+		}
+		resp.Disk.Devices = procfs.DiskRates(diskSamples, a.prevDisk, seconds)
+		resp.Disk.Available = true
+		a.prevDisk = make(map[string]procfs.DiskSample, len(diskSamples))
+		for _, sample := range diskSamples {
+			a.prevDisk[sample.Name] = sample
+		}
+		a.prevDiskWall = wallNow
+	}
+	if rootErr != nil {
+		resp.Disk.Error = "statfs: " + rootErr.Error()
+	}
+	if diskErr != nil {
+		if resp.Disk.Error != "" {
+			resp.Disk.Error += "; "
+		}
+		resp.Disk.Error += "diskstats: " + diskErr.Error()
+	}
+
 	procs, err := procfs.ListProcesses()
 	if err != nil {
 		return nil, fmt.Errorf("读取进程列表: %w", err)
@@ -127,6 +190,33 @@ func (a *App) GetSnapshot() (*SnapshotData, error) {
 	a.prevWall = wallNow
 
 	return resp, nil
+}
+
+// GetProcessDetail 读取选中进程的扩展信息，并校验 PID 实例身份。
+func (a *App) GetProcessDetail(pid int, startTime uint64) (*procfs.ProcessDetail, error) {
+	detail, err := procfs.ReadProcessDetail(pid, startTime)
+	if err != nil {
+		return nil, fmt.Errorf("读取进程 %d 详情: %w", pid, err)
+	}
+	return &detail, nil
+}
+
+// ForkDemo 调用真实 fork()，子进程立即 execv /bin/sleep，父进程异步回收。
+func (a *App) ForkDemo(seconds int) (*ForkResult, error) {
+	if seconds == 0 {
+		seconds = 10
+	}
+	if seconds < 1 || seconds > 30 {
+		return nil, fmt.Errorf("fork 演示时长必须在 1 到 30 秒之间")
+	}
+	pid, err := processctl.ForkSleep(seconds)
+	if err != nil {
+		return nil, err
+	}
+	return &ForkResult{
+		PID: pid, ParentPID: os.Getpid(), DurationSeconds: seconds,
+		Implementation: "libc fork() → execv(/bin/sleep) → wait4()",
+	}, nil
 }
 
 // KillProcess 向指定进程发送 Unix 信号（对应 kill(2) 系统调用）

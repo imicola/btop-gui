@@ -121,9 +121,14 @@ tmux send-keys -t btop "cd /home/imicola/imicola_resource/os_design/btop-gui && 
 | `internal/procfs/types.go` | 数据结构 | `UTime`/`STime` 用 `json:"-"` 隐藏，是计算 CPU% 的中间值 |
 | `internal/procfs/cpu.go` | `/proc/stat` 解析 + CPU% 算法 | 公式见注释，不要改 |
 | `internal/procfs/mem.go` | `/proc/meminfo` 解析 | `Used = Total - Available`（比 Free 更准） |
-| `internal/procfs/system.go` | `/proc/loadavg`、`/proc/uptime` + `ClkTck`/`PageSize` 常量 | `ClkTck = 100` 是 Linux USER_HZ 硬编码 |
-| `internal/procfs/process.go` | `/proc/[pid]/stat` 解析 | **comm 字段括号陷阱**：必须用第一个 `(` 和最后一个 `)` 截取 |
-| `frontend/src/App.vue` | 主界面 | ECharts 初始化用 `watch(snap)` + SVG renderer |
+| `internal/procfs/system.go` | `/proc/loadavg`、`/proc/uptime`、CPU/主机信息 | `ClkTck = 100` 是 Linux USER_HZ 硬编码 |
+| `internal/procfs/process.go` | `/proc/[pid]/stat` + 用户解析 | **comm 字段括号陷阱**：必须用第一个 `(` 和最后一个 `)` 截取 |
+| `internal/procfs/network.go` | `/proc/net/dev` 累计量与速率 | 首帧/计数回退必须返回 0 |
+| `internal/procfs/disk.go` | `/proc/diskstats` + `statfs(2)` | sector 固定按 512 bytes 换算，过滤分区/虚拟盘 |
+| `internal/procfs/detail.go` | 选中进程 status/cmdline/io/fd | 权限不足是正常情况，返回 unavailable |
+| `internal/processctl/` | Linux+cgo 原生 fork 演示 | 子进程只能立即 execv 或 _exit，不能返回 Go runtime |
+| `frontend/src/App.vue` | 采样编排、动作与事件轨 | 后一次轮询必须等前一次 IPC 完成 |
+| `frontend/src/components/` | btop 高密度面板 | 所有 ECharts 必须保持 SVG renderer |
 | `frontend/src/style.css` | 深色主题 CSS 变量 | 颜色变量定义在这里 |
 
 ## 注释约定
@@ -141,8 +146,8 @@ tmux send-keys -t btop "cd /home/imicola/imicola_resource/os_design/btop-gui && 
 
 ## 后续工作待办
 
-1. **UI 美化**
-   - btop 风格多彩折线、进程树视图
+1. 根据最终答辩机器分辨率微调密度并补充正式截图。
+2. 如需跨架构运行，将 `ClkTck` 改为 `sysconf(_SC_CLK_TCK)` 运行时探测。
 
 ## 禁止事项
 

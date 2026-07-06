@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import PanelFrame from './PanelFrame.vue'
 import MiniChart from './MiniChart.vue'
 import type { CPUUsage, SystemInfo } from '../types'
+import { adaptivePercentRange } from '../utils'
 
-defineProps<{ cpu: CPUUsage; system: SystemInfo; history: number[]; loadAvg: number[] }>()
+const props = defineProps<{ cpu: CPUUsage; system: SystemInfo; history: number[]; loadAvg: number[] }>()
+const range = computed(() => adaptivePercentRange(props.history))
 </script>
 
 <template>
@@ -11,9 +14,10 @@ defineProps<{ cpu: CPUUsage; system: SystemInfo; history: number[]; loadAvg: num
     <div class="cpu-layout">
       <div class="cpu-history">
         <div class="cpu-readout"><strong>{{ cpu.total.toFixed(1) }}</strong><span>%</span></div>
-        <MiniChart :series="[history]" :colors="['#7BDFF2']" :max="100" fill />
+        <MiniChart :series="[history]" :colors="['#7BDFF2']" :min="range.min" :max="range.max" />
         <div class="cpu-foot">
           <span>freq <b>{{ system.cpuFreqMHz ? `${(system.cpuFreqMHz / 1000).toFixed(2)} GHz` : 'N/A' }}</b></span>
+          <span>scale <b>{{ range.min }}–{{ range.max }}%</b></span>
           <span>load <b>{{ loadAvg.map(v => v.toFixed(2)).join(' · ') }}</b></span>
         </div>
       </div>

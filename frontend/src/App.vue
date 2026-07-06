@@ -26,6 +26,7 @@ const histories = reactive({
 let timer: number | null = null
 let stopped = false
 let polling = false
+let historyBaselineReady = false
 const MAX_POINTS = 60
 
 function errorMessage(value: unknown) { return value instanceof Error ? value.message : String(value) }
@@ -41,8 +42,13 @@ function selectedNetwork(snap: Snapshot) {
   return snap.network.interfaces.find(item => item.name === snap.network.primary) || snap.network.interfaces[0]
 }
 function updateHistories(snap: Snapshot) {
-  pushHistory(histories.cpu, snap.cpu.total)
   pushHistory(histories.memory, snap.memory.usage)
+  // CPU/网络/磁盘速率依赖两次累计计数采样，丢弃无差分依据的首帧 0。
+  if (!historyBaselineReady) {
+    historyBaselineReady = true
+    return
+  }
+  pushHistory(histories.cpu, snap.cpu.total)
   const network = selectedNetwork(snap)
   pushHistory(histories.netRX, network?.rxRate || 0)
   pushHistory(histories.netTX, network?.txRate || 0)

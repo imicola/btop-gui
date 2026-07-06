@@ -28,7 +28,7 @@ const primaryDisk = computed(() => [...props.disk.devices].sort((a, b) =>
     <div class="resource-pair">
       <PanelFrame title="mem" tone="green" :meta="`${fmtKB(memory.total)} total`">
         <div class="metric-head"><strong>{{ memory.usage.toFixed(1) }}%</strong><span>{{ fmtKB(memory.used) }} used</span></div>
-        <div class="chart-short"><MiniChart :series="[memoryHistory]" :colors="['#A6E3A1']" :max="100" fill /></div>
+        <div class="chart-short"><MiniChart :series="[memoryHistory]" :colors="['#A6E3A1']" :max="100" /></div>
         <div class="memory-lines">
           <span>avail <b>{{ fmtKB(memory.available) }}</b></span>
           <span>cache <b>{{ fmtKB(memory.cached) }}</b></span>

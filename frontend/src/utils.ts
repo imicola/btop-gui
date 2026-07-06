@@ -23,6 +23,27 @@ export function fmtDuration(seconds: number): string {
   return d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`
 }
 
+// 为低负载 CPU 历史计算动态纵轴。保留上下留白并使用整刻度，
+// 同时严格限制在百分比合法范围 0..100。
+export function adaptivePercentRange(values: number[]): { min: number; max: number } {
+  const samples = values.filter(value => Number.isFinite(value)).map(value => Math.max(0, Math.min(100, value)))
+  if (!samples.length) return { min: 0, max: 10 }
+  const low = Math.min(...samples)
+  const high = Math.max(...samples)
+  const span = Math.max(high - low, 2)
+  const padding = span * 0.35
+  const rawMin = Math.max(0, low - padding)
+  const rawMax = Math.min(100, high + padding)
+  const step = rawMax <= 15 ? 1 : rawMax <= 40 ? 2 : 5
+  let min = Math.max(0, Math.floor(rawMin / step) * step)
+  let max = Math.min(100, Math.ceil(rawMax / step) * step)
+  if (max - min < 4) {
+    max = Math.min(100, min + 4)
+    min = Math.max(0, max - 4)
+  }
+  return { min, max }
+}
+
 // 仅做 argv 切分，不调用 shell；支持单双引号和反斜线转义。
 export function parseArguments(input: string): string[] {
   const args: string[] = []

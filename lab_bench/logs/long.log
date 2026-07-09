@@ -1,0 +1,7 @@
+=== RUN   TestIntegrationBench
+    bench_test.go:105: RESULT	long	43	2.138	3.888	0.27	13.9	0	1800
+RESULT	long	43	2.138	3.888	0.27	13.9	0	1800
+--- PASS: TestIntegrationBench (1799.01s)
+PASS
+ok  	btop-gui	1799.013s
+DONE

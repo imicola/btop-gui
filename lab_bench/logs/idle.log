@@ -1,0 +1,6 @@
+=== RUN   TestIntegrationBench
+    bench_test.go:105: RESULT	idle	40	2.051	3.262	0.26	13.4	0	90
+RESULT	idle	40	2.051	3.262	0.26	13.4	0	90
+--- PASS: TestIntegrationBench (89.01s)
+PASS
+ok  	btop-gui	(cached)
